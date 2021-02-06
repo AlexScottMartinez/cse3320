@@ -22,14 +22,28 @@ int main( void )
   else if ( pid == 0 )
   {
     // When fork() returns 0, we are in the child process.
-    int time = 10;
     // printf("Hello from the child process\n");
-    for(int i =10; i >= 0; i--)
-    {
-      time = i;
-      printf("%d seconds\n", time);
-      sleep(1);
-    }
+    printf("10 seconds\n");
+    sleep(1);
+    printf("9 seconds\n");
+    sleep(1);
+    printf("8 seconds\n");
+    sleep(1);
+    printf("7 seconds\n");
+    sleep(1);
+    printf("6 seconds\n");
+    sleep(1);
+    printf("5 seconds\n");
+    sleep(1);
+    printf("4 seconds\n");
+    sleep(1);
+    printf("3 seconds\n");
+    sleep(1);
+    printf("2 seconds\n");
+    sleep(1);
+    printf("1 seconds\n");
+    sleep(1);
+    printf("0 seconds\n");
     fflush(NULL);
     exit( EXIT_SUCCESS );
   }
