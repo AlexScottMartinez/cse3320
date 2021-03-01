@@ -98,8 +98,8 @@ int main()
         pid_t pid = fork();
         if (pid == 0)		// Parent process
         {
-          int ret = execvp(token[0], &token[0]);
-          if (ret == -1)
+          int invalidCmd = execvp(token[0], &token[0]);
+          if (invalidCmd == -1)
           {
             printf("%s: Command not found\n", token[0]);
             _exit(1);
