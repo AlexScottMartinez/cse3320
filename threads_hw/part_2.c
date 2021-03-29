@@ -6,9 +6,9 @@
 
 #define SIZE 5
 
-pthread_mutex_t t_mutex;
-pthread_cond_t cond_c, cond_p;
-char ch;
+pthread_mutex_t count_mutex;
+pthread_cond_t cond_consumer, cond_producer;
+char chtr;
 FILE *fp;
 char items[SIZE];
 int front = -1, rear = -1;
@@ -88,16 +88,16 @@ void* producer(void *ptr)
 {
 	while(!feof(fp))
     	{
-        	pthread_mutex_lock(&t_mutex);
+        	pthread_mutex_lock(&count_mutex);
         	while(isFull())
         	{
-            		pthread_cond_wait(&cond_p,&t_mutex);
+            		pthread_cond_wait(&cond_producer,&count_mutex);
 
         	}
-        	fread(&ch, 1, 1, fp);
-        	enQueue(ch);
-        	pthread_cond_signal(&cond_c);
-        	pthread_mutex_unlock(&t_mutex);
+        	fread(&chtr, 1, 1, fp);
+        	enQueue(chtr);
+        	pthread_cond_signal(&cond_consumer);
+        	pthread_mutex_unlock(&count_mutex);
 
     	}
     	pthread_exit(0);
@@ -109,15 +109,15 @@ void* consumer(void *ptr)
 	printf("\n");
 	while(!feof(fp))
     	{
-        	pthread_mutex_lock(&t_mutex);
+        	pthread_mutex_lock(&count_mutex);
         	while(isEmpty())
         	{
-            		pthread_cond_wait(&cond_c,&t_mutex);
+            		pthread_cond_wait(&cond_consumer,&count_mutex);
 
         	}
         	printf("%c", deQueue());
-        	pthread_cond_signal(&cond_p);
-        	pthread_mutex_unlock(&t_mutex);
+        	pthread_cond_signal(&cond_producer);
+        	pthread_mutex_unlock(&count_mutex);
 
     	}
     	pthread_exit(0);
@@ -146,16 +146,16 @@ int main(int argc, char *argv[])
         	return 0;
 
     	}
-    	pthread_mutex_init(&t_mutex, NULL);
-    	pthread_cond_init(&cond_c, NULL);
-    	pthread_cond_init(&cond_p, NULL);
+    	pthread_mutex_init(&count_mutex, NULL);
+    	pthread_cond_init(&cond_consumer, NULL);
+    	pthread_cond_init(&cond_producer, NULL);
     	pthread_create(&con, NULL, consumer, NULL);
     	pthread_create(&pro, NULL, producer, NULL);
     	pthread_join(con, NULL);
     	pthread_join(pro, NULL);
-    	pthread_mutex_destroy(&t_mutex);
-    	pthread_cond_destroy(&cond_c);
-    	pthread_cond_destroy(&cond_p);
+    	pthread_mutex_destroy(&count_mutex);
+    	pthread_cond_destroy(&cond_consumer);
+    	pthread_cond_destroy(&cond_producer);
        
    // End Timer
     	gettimeofday(&end, NULL);
