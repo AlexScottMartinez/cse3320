@@ -3,10 +3,12 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <limits.h>
+#include <string.h>
 
-#define ALIGN4(s)         (((((s) - 1) >> 2) << 2) + 4)
+#define ALIGN4(s)          (((((s) - 1) >> 2) << 2) + 4)
 #define BLOCK_DATA(b)      ((b) + 1)
-#define BLOCK_HEADER(ptr)   ((struct _block *)(ptr) - 1)
+#define BLOCK_HEADER(ptr)  ((struct _block *)(ptr) - 1)
 
 
 static int atexit_registered = 0;
@@ -82,15 +84,63 @@ struct _block *findFreeBlock(struct _block **last, size_t size)
 #endif
 
 #if defined BEST && BEST == 0
-   printf("TODO: Implement best fit here\n");
+   /* Best fit */
+   struct _block *min = NULL;
+   size_t minSize = INT_MAX;
+   while (curr != NULL)
+   {
+      if (curr->size >= size && curr->free == true)
+      {
+         if (curr->size < minSize)
+         {
+            minSize = curr->size;
+            min = curr;
+         }
+      }
+      *last = curr;
+      curr = curr->next;
+   }
+   curr = min;   
 #endif
 
 #if defined WORST && WORST == 0
-   printf("TODO: Implement worst fit here\n");
+   /* Worst fit */
+   struct _block *max = NULL;
+   size_t maxSize = INT_MIN;
+   while (curr != NULL)
+   {
+      if (curr->size >= size && curr->free == true)
+      {
+         if (curr->size > maxSize)
+         {
+            maxSize = curr->size;
+            max = curr;
+         }
+      }
+      *last = curr;
+      curr = curr->next;
+   }
+   curr = max;
 #endif
 
 #if defined NEXT && NEXT == 0
-   printf("TODO: Implement next fit here\n");
+   /* Next fit */
+   struct _block *lastReuse = NULL;
+   while (lastReuse && !(lastReuse->free && lastReuse->size >= size)) 
+   {
+      *last = lastReuse;
+      lastReuse  = lastReuse->next;
+   }
+   
+   if (!lastReuse) lastReuse = curr;
+   
+   while (lastReuse && !(lastReuse->free && lastReuse->size >= size)) 
+   {
+      *last = lastReuse;
+      lastReuse  = lastReuse->next;
+   }
+   
+   curr = lastReuse;
 #endif
 
    return curr;
@@ -155,6 +205,8 @@ struct _block *growHeap(struct _block *last, size_t size)
  */
 void *malloc(size_t size) 
 {
+   num_mallocs = num_mallocs + 1;
+   num_requested = num_requested + size;
 
    if( atexit_registered == 0 )
    {
@@ -164,6 +216,7 @@ void *malloc(size_t size)
 
    /* Align to multiple of 4 */
    size = ALIGN4(size);
+   num_blocks = num_blocks + num_blocks;
 
    /* Handle 0 size */
    if (size == 0) 
@@ -176,11 +229,21 @@ void *malloc(size_t size)
    struct _block *next = findFreeBlock(&last, size);
 
    /* TODO: Split free _block if possible */
+   /*if (size < last)
+   {
+      size = last;
+   }
+   
+   else
+   {
+      size = size + next;
+   }*/
 
    /* Could not find free _block, so grow heap */
    if (next == NULL) 
    {
       next = growHeap(last, size);
+      max_heap = max_heap + size;;
    }
 
    /* Could not find free _block or grow heap, so just return NULL */
@@ -191,11 +254,73 @@ void *malloc(size_t size)
    
    /* Mark _block as in use */
    next->free = false;
+   num_reuses = num_reuses + 1;
 
    /* Return data address associated with _block */
    return BLOCK_DATA(next);
 }
 
+void *realloc(void *ptr, size_t size)
+{
+   if( atexit_registered == 0 )
+   {
+      atexit_registered = 1;
+      atexit( printStatistics );
+   }
+   
+   struct _block *curr = BLOCK_HEADER(ptr);
+   void *newptr;
+   
+   if (size == 0)
+   {
+      free(ptr);
+      return 0;
+   }
+   
+   if (ptr == NULL)
+   {
+      return malloc(size);
+   }
+   
+   newptr = malloc(size);
+   if (!newptr)
+   {
+      return 0;
+   }
+   
+   if (size < curr->size)
+   {
+      curr->size = size;
+   }
+   
+   memcpy(newptr, ptr, curr->size);
+   
+   free(ptr);
+   
+   return newptr;
+}
+
+void *calloc(size_t nmemb, size_t size)
+{
+   if( atexit_registered == 0 )
+   {
+      atexit_registered = 1;
+      atexit( printStatistics );
+   }
+   
+   if ( nmemb == 0 || size == 0)
+   {
+      return NULL;
+   }
+   
+   size_t bytes = nmemb * size;
+   void *newptr;
+   
+    newptr = malloc(bytes);
+    memset(newptr, 0, bytes);
+    
+    return newptr;
+}
 /*
  * \brief free
  *
@@ -213,12 +338,12 @@ void free(void *ptr)
       return;
    }
 
+   num_frees = num_frees + 1;
    /* Make _block as free */
    struct _block *curr = BLOCK_HEADER(ptr);
    assert(curr->free == 0);
    curr->free = true;
 
-   /* TODO: Coalesce free _blocks if needed */
 }
 
 /* vim: set expandtab sts=3 sw=3 ts=6 ft=cpp: --------------------------------*/
